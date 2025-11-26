@@ -32,7 +32,6 @@ class _TodoCategoryState extends State<TodoCategory> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Белая шапка категории (тоже DragTarget!)
         DragTarget<Todo>(
           onWillAcceptWithDetails: (details) {
             return details.data.status != widget.category;
@@ -56,20 +55,21 @@ class _TodoCategoryState extends State<TodoCategory> {
             setState(() => _isDragOver = false);
           },
           builder: (context, candidateData, rejectedData) {
-            return Container(
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               decoration: BoxDecoration(
                 color: AppTheme.whiteColor,
                 borderRadius: BorderRadius.circular(8),
                 border: _isDragOver || candidateData.isNotEmpty
                     ? Border.all(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                        color: AppTheme.primaryColor.withOpacity(0.5),
                         width: 2,
                       )
                     : null,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.07),
+                    color: Colors.black.withOpacity(0.07),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -127,39 +127,52 @@ class _TodoCategoryState extends State<TodoCategory> {
           },
         ),
 
-        // Список задач
         if (_expanded)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              children: widget.todos.map((todo) {
-                return LongPressDraggable<Todo>(
-                  data: todo,
-                  feedback: SizedBox(
-                    width: width,
-                    child: Material(
-                      elevation: 8,
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.transparent,
-                      child: Opacity(
-                        opacity: 0.85,
-                        child: TodoCard(todo: todo),
+
+            child: widget.todos.isEmpty
+                ? SizedBox(
+                    height: 80,
+                    child: Center(
+                      child: Text(
+                        'Перетащите сюда задачу',
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
+                  )
+                : Column(
+                    children: widget.todos.map((todo) {
+                      return LongPressDraggable<Todo>(
+                        data: todo,
+                        feedback: SizedBox(
+                          width: width,
+                          child: Material(
+                            elevation: 6,
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.transparent,
+                            child: Opacity(
+                              opacity: 0.85,
+                              child: TodoCard(todo: todo),
+                            ),
+                          ),
+                        ),
+                        childWhenDragging: Opacity(
+                          opacity: 0.4,
+                          child: TodoCard(todo: todo),
+                        ),
+                        child: TodoCard(
+                          todo: todo,
+                          onDelete: widget.onDelete != null
+                              ? () => widget.onDelete!(todo)
+                              : null,
+                        ),
+                      );
+                    }).toList(),
                   ),
-                  childWhenDragging: Opacity(
-                    opacity: 0.3,
-                    child: TodoCard(todo: todo),
-                  ),
-                  child: TodoCard(
-                    todo: todo,
-                    onDelete: widget.onDelete != null
-                        ? () => widget.onDelete!(todo)
-                        : null,
-                  ),
-                );
-              }).toList(),
-            ),
           ),
       ],
     );

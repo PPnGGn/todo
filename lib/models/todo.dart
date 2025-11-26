@@ -2,7 +2,7 @@ class Todo {
   final String id;
   final String title;
   final DateTime date;
-  final String status; 
+  final String status;
 
   Todo({
     required this.id,
