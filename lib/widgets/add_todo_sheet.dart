@@ -1,60 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:todo/provider/add_todo_form_provider.dart';
 import 'package:todo/theme/app_theme.dart';
 
-class AddTodoBottomSheet extends StatefulWidget {
+class AddTodoBottomSheet extends ConsumerWidget {
   final void Function(String title, DateTime date) onCreate;
 
   const AddTodoBottomSheet({super.key, required this.onCreate});
 
-  @override
-  State<AddTodoBottomSheet> createState() => _AddTodoBottomSheetState();
-}
-
-class _AddTodoBottomSheetState extends State<AddTodoBottomSheet> {
-  final TextEditingController _titleController = TextEditingController();
-  DateTime? _selectedDate = DateTime.now();
-  bool _isButtonEnabled = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _titleController.addListener(_updateButtonState);
-    _updateButtonState();
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    super.dispose();
-  }
-
-  void _updateButtonState() {
-    setState(() {
-      _isButtonEnabled =
-          _titleController.text.trim().isNotEmpty && _selectedDate != null;
-    });
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
+  Future<void> _selectDate(BuildContext context, WidgetRef ref) async {
+    final currentDate = ref.read(addTodoFormProvider).date;
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
+      initialDate: currentDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    setState(() {
-      _selectedDate = pickedDate;
-      _updateButtonState();
-    });
+    if (pickedDate != null) {
+      ref.read(addTodoFormProvider.notifier).setDate(pickedDate);
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context).textTheme.bodyLarge;
+    final formState = ref.watch(addTodoFormProvider);
 
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppTheme.whiteColor,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(16),
@@ -71,9 +45,12 @@ class _AddTodoBottomSheetState extends State<AddTodoBottomSheet> {
           const SizedBox(height: 16),
           Text('Создание задачи', style: theme?.copyWith(fontSize: 22)),
           const SizedBox(height: 24),
+
           TextField(
-            controller: _titleController,
             style: theme,
+            onChanged: (value) {
+              ref.read(addTodoFormProvider.notifier).setTitle(value);
+            },
             decoration: InputDecoration(
               labelText: 'Задача',
               labelStyle: theme?.copyWith(fontWeight: FontWeight.w400),
@@ -83,7 +60,7 @@ class _AddTodoBottomSheetState extends State<AddTodoBottomSheet> {
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: _titleController.text.trim().isNotEmpty
+                  color: formState.title.trim().isNotEmpty
                       ? AppTheme.primaryColor
                       : Colors.grey[300]!,
                   width: 2,
@@ -91,15 +68,19 @@ class _AddTodoBottomSheetState extends State<AddTodoBottomSheet> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+                borderSide: const BorderSide(
+                  color: AppTheme.primaryColor,
+                  width: 2,
+                ),
               ),
               contentPadding: const EdgeInsets.all(12),
             ),
           ),
 
           const SizedBox(height: 16),
+
           GestureDetector(
-            onTap: () => _selectDate(context),
+            onTap: () => _selectDate(context, ref),
             child: AbsorbPointer(
               child: TextField(
                 style: theme,
@@ -112,7 +93,7 @@ class _AddTodoBottomSheetState extends State<AddTodoBottomSheet> {
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(
-                      color: _selectedDate != null
+                      color: formState.date != null
                           ? AppTheme.primaryColor
                           : Colors.grey[300]!,
                       width: 2,
@@ -120,7 +101,7 @@ class _AddTodoBottomSheetState extends State<AddTodoBottomSheet> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
+                    borderSide: const BorderSide(
                       color: AppTheme.primaryColor,
                       width: 2,
                     ),
@@ -132,43 +113,46 @@ class _AddTodoBottomSheetState extends State<AddTodoBottomSheet> {
                   ),
                 ),
                 controller: TextEditingController(
-                  text: _selectedDate != null
-                      ? '${_selectedDate!.day}.${_selectedDate!.month}.${_selectedDate!.year}'
+                  text: formState.date != null
+                      ? '${formState.date!.day}.${formState.date!.month}.${formState.date!.year}'
                       : '',
                 ),
                 readOnly: true,
               ),
             ),
           ),
+
           const SizedBox(height: 24),
+
           Row(
             children: [
               Expanded(
                 child: ElevatedButton(
                   style: AppTheme.cancelButtonStyle,
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () {
+                    ref.read(addTodoFormProvider.notifier).reset();
+                    Navigator.of(context).pop();
+                  },
                   child: const Text('Отменить'),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton(
-                  style: _isButtonEnabled
+                  style: formState.isValid
                       ? AppTheme.primaryButtonStyle
                       : AppTheme.primaryButtonStyle.copyWith(
                           backgroundColor: WidgetStateProperty.all(
-                            AppTheme.primaryColor.withOpacity(0.4),
+                            AppTheme.primaryColor.withValues(alpha: 0.4),
                           ),
                           foregroundColor: WidgetStateProperty.all(
                             AppTheme.buttonTextColor,
                           ),
                         ),
-                  onPressed: _isButtonEnabled
+                  onPressed: formState.isValid
                       ? () {
-                          widget.onCreate(
-                            _titleController.text.trim(),
-                            _selectedDate!,
-                          );
+                          onCreate(formState.title.trim(), formState.date!);
+                          ref.read(addTodoFormProvider.notifier).reset();
                           Navigator.of(context).pop();
                         }
                       : null,

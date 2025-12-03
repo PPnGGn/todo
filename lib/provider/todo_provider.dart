@@ -1,18 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/todo.dart';
-import '../data/todo_local_data_source.dart';
+import 'package:todo/data/todo_local_data_source.dart';
+import 'package:todo/models/todo.dart';
 
 class TodoNotifier extends Notifier<List<Todo>> {
-  late final TodoLocalDataSource _dataSource;
+  final _dataSource = TodoLocalDataSource();
 
   @override
   List<Todo> build() {
-    _dataSource = TodoLocalDataSource();
-    _load();
+    _loadTodos();
     return [];
   }
 
-  Future<void> _load() async {
+  Future<void> _loadTodos() async {
     final todos = await _dataSource.loadTodos();
     state = todos;
   }

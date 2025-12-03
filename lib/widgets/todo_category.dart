@@ -1,9 +1,12 @@
+// lib/widgets/todo_category.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todo/models/todo.dart';
+import 'package:todo/provider/todo_category_provider.dart';
 import 'package:todo/theme/app_theme.dart';
 import 'package:todo/widgets/todo_card.dart';
 
-class TodoCategory extends StatefulWidget {
+class TodoCategory extends ConsumerWidget {
   final String category;
   final List<Todo> todos;
   final ValueChanged<Todo>? onDelete;
@@ -18,41 +21,40 @@ class TodoCategory extends StatefulWidget {
   });
 
   @override
-  State<TodoCategory> createState() => _TodoCategoryState();
-}
-
-class _TodoCategoryState extends State<TodoCategory> {
-  bool _expanded = true;
-  bool _isDragOver = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final double width = MediaQuery.of(context).size.width - 32;
+    final categoryState = ref.watch(todoCategoryProvider(category));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DragTarget<Todo>(
           onWillAcceptWithDetails: (details) {
-            return details.data.status != widget.category;
+            return details.data.status != category;
           },
           onAcceptWithDetails: (details) {
             final updatedTodo = Todo(
               id: details.data.id,
               title: details.data.title,
               date: details.data.date,
-              status: widget.category,
+              status: category,
             );
-            widget.onEdit?.call(updatedTodo);
-            setState(() => _isDragOver = false);
+            onEdit?.call(updatedTodo);
+            ref
+                .read(todoCategoryProvider(category).notifier)
+                .setDragOver(false);
           },
           onMove: (details) {
-            if (!_isDragOver) {
-              setState(() => _isDragOver = true);
+            if (!categoryState.isDragOver) {
+              ref
+                  .read(todoCategoryProvider(category).notifier)
+                  .setDragOver(true);
             }
           },
           onLeave: (data) {
-            setState(() => _isDragOver = false);
+            ref
+                .read(todoCategoryProvider(category).notifier)
+                .setDragOver(false);
           },
           builder: (context, candidateData, rejectedData) {
             return AnimatedContainer(
@@ -61,15 +63,15 @@ class _TodoCategoryState extends State<TodoCategory> {
               decoration: BoxDecoration(
                 color: AppTheme.whiteColor,
                 borderRadius: BorderRadius.circular(8),
-                border: _isDragOver || candidateData.isNotEmpty
+                border: categoryState.isDragOver || candidateData.isNotEmpty
                     ? Border.all(
-                        color: AppTheme.primaryColor.withOpacity(0.5),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.5),
                         width: 2,
                       )
                     : null,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.07),
+                    color: Colors.black.withValues(alpha: 0.07),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -77,7 +79,11 @@ class _TodoCategoryState extends State<TodoCategory> {
               ),
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
-                onTap: () => setState(() => _expanded = !_expanded),
+                onTap: () {
+                  ref
+                      .read(todoCategoryProvider(category).notifier)
+                      .toggleExpanded();
+                },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -87,7 +93,7 @@ class _TodoCategoryState extends State<TodoCategory> {
                     children: [
                       Expanded(
                         child: Text(
-                          widget.category,
+                          category,
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w500,
@@ -105,7 +111,7 @@ class _TodoCategoryState extends State<TodoCategory> {
                           horizontal: 10,
                         ),
                         child: Text(
-                          widget.todos.length.toString(),
+                          todos.length.toString(),
                           style: const TextStyle(
                             fontSize: 15,
                             color: Color(0xFF7E7E7E),
@@ -116,7 +122,7 @@ class _TodoCategoryState extends State<TodoCategory> {
                       const SizedBox(width: 8),
                       AnimatedRotation(
                         duration: const Duration(milliseconds: 200),
-                        turns: _expanded ? 0.5 : 0,
+                        turns: categoryState.isExpanded ? 0.5 : 0,
                         child: const Icon(Icons.expand_more, size: 24),
                       ),
                     ],
@@ -127,11 +133,10 @@ class _TodoCategoryState extends State<TodoCategory> {
           },
         ),
 
-        if (_expanded)
+        if (categoryState.isExpanded)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-
-            child: widget.todos.isEmpty
+            child: todos.isEmpty
                 ? SizedBox(
                     height: 80,
                     child: Center(
@@ -145,7 +150,7 @@ class _TodoCategoryState extends State<TodoCategory> {
                     ),
                   )
                 : Column(
-                    children: widget.todos.map((todo) {
+                    children: todos.map((todo) {
                       return LongPressDraggable<Todo>(
                         data: todo,
                         feedback: SizedBox(
@@ -166,8 +171,8 @@ class _TodoCategoryState extends State<TodoCategory> {
                         ),
                         child: TodoCard(
                           todo: todo,
-                          onDelete: widget.onDelete != null
-                              ? () => widget.onDelete!(todo)
+                          onDelete: onDelete != null
+                              ? () => onDelete!(todo)
                               : null,
                         ),
                       );

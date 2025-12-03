@@ -1,9 +1,9 @@
+// lib/pages/todo_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todo/models/todo.dart';
 import 'package:todo/provider/todo_provider.dart';
 import 'package:todo/widgets/app_bar_button.dart';
-
 import 'package:todo/widgets/todo_category.dart';
 
 class TodoListScreen extends ConsumerWidget {
@@ -19,6 +19,7 @@ class TodoListScreen extends ConsumerWidget {
       'На проверке': [],
       'Выполнено': [],
     };
+
     for (var todo in todos) {
       grouped[todo.status]?.add(todo);
     }
@@ -28,7 +29,7 @@ class TodoListScreen extends ConsumerWidget {
         title: const Text('Todo'),
         centerTitle: false,
         titleSpacing: 16,
-        actions: [AppBarButton()],
+        actions: const [AppBarButton()],
       ),
       body: ListView(
         children: grouped.entries.map((entry) {
